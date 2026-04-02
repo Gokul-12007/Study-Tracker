@@ -418,41 +418,9 @@ const PALETTE = ['#7c6dfa','#22d9a0','#f5a623','#f55f57','#38bdf8','#e879f9','#f
 
 // ==================== DEFAULT DATA ====================
 const DEFAULT_DATA = {
-  userName: 'S.M. Gokul Krishna',
-  targetYear: 'May 2027',
-  exams: [
-    {
-      id:'e1', name:'CA Inter', color:'#7c6dfa',
-      subjects:[
-        {id:'s1',name:'Advanced Accounting',chapters:[]},
-        {id:'s2',name:'Corporate & Other Laws',chapters:[]},
-        {id:'s3',name:'Taxation',chapters:[]},
-        {id:'s4',name:'Cost & Mgmt Accounting',chapters:[]},
-        {id:'s5',name:'Auditing & Ethics',chapters:[]},
-        {id:'s6',name:'FM & Strategic Mgmt',chapters:[]},
-      ]
-    },
-    {
-      id:'e2', name:'CMA Inter', color:'#22d9a0',
-      subjects:[
-        {id:'s7',name:'Financial Accounting',chapters:[]},
-        {id:'s8',name:'Business Law & Ethics',chapters:[]},
-        {id:'s9',name:'Direct & Indirect Tax',chapters:[]},
-        {id:'s10',name:'Cost Accounting',chapters:[]},
-        {id:'s11',name:'Corporate Acctg & Audit',chapters:[]},
-        {id:'s12',name:'Operations & Strategy',chapters:[]},
-        {id:'s13',name:'FM & BDA',chapters:[]},
-        {id:'s14',name:'Management Accounting',chapters:[]},
-      ]
-    },
-    {
-      id:'e3', name:'English', color:'#f5a623',
-      subjects:[
-        {id:'s15',name:'Vocabulary',chapters:[]},
-        {id:'s16',name:'Grammar',chapters:[]},
-      ]
-    }
-  ]
+  userName: 'Your Name',
+  targetYear: '2027',
+  exams: []
 };
 
 // ==================== STATE ====================
@@ -477,14 +445,14 @@ let selColor=PALETTE[0];
 
 // ==================== STORAGE ====================
 function loadState(){
-  try{ return JSON.parse(localStorage.getItem('gk3_state'))||structuredClone(DEFAULT_DATA); }
+  try{ return JSON.parse(localStorage.getItem('gk4_state'))||structuredClone(DEFAULT_DATA); }
   catch(e){ return structuredClone(DEFAULT_DATA); }
 }
-function saveState(){ localStorage.setItem('gk3_state',JSON.stringify(state)); }
-function loadSessions(){ try{return JSON.parse(localStorage.getItem('gk3_sessions'))||[];}catch(e){return[];} }
-function saveSessions(){ localStorage.setItem('gk3_sessions',JSON.stringify(sessions)); }
-function loadCompletions(){ try{return JSON.parse(localStorage.getItem('gk3_comp'))||{};}catch(e){return{};} }
-function saveCompletions(){ localStorage.setItem('gk3_comp',JSON.stringify(completions)); }
+function saveState(){ localStorage.setItem('gk4_state',JSON.stringify(state)); }
+function loadSessions(){ try{return JSON.parse(localStorage.getItem('gk4_sessions'))||[];}catch(e){return[];} }
+function saveSessions(){ localStorage.setItem('gk4_sessions',JSON.stringify(sessions)); }
+function loadCompletions(){ try{return JSON.parse(localStorage.getItem('gk4_comp'))||{};}catch(e){return{};} }
+function saveCompletions(){ localStorage.setItem('gk4_comp',JSON.stringify(completions)); }
 function genId(){ return 'i'+Math.random().toString(36).slice(2,9); }
 
 // ==================== RENDER ====================
@@ -591,6 +559,14 @@ function onSubChange(keep=false){
 function renderExams(){
   const wrap=document.getElementById('examsWrap');
   wrap.innerHTML='';
+  if(!state.exams.length){
+    wrap.innerHTML=`<div style="text-align:center;padding:4rem 2rem;color:var(--muted);border:1.5px dashed var(--border2);border-radius:18px;margin-bottom:1rem;">
+      <div style="font-size:3rem;margin-bottom:1rem;">📭</div>
+      <div style="font-size:1.1rem;font-weight:700;color:var(--muted2);margin-bottom:0.5rem;">No exams yet</div>
+      <div style="font-size:0.85rem;margin-bottom:1.5rem;">Click <strong style="color:var(--accent)">＋ Add Exam</strong> in the header to get started</div>
+    </div>`;
+    return;
+  }
   state.exams.forEach(ex=>{
     let tot=0,done=0;
     ex.subjects.forEach(s=>{
