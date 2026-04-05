@@ -306,6 +306,49 @@ body::before{
 .toast-t{font-weight:700;color:var(--green);margin-bottom:2px;font-size:0.85rem;}
 .toast-b{color:var(--muted2);}
 
+
+/* ===== TODO ===== */
+.todo-card{background:var(--s1);border:1px solid var(--border);border-radius:18px;padding:1.6rem;margin-bottom:1.5rem;}
+.todo-input-row{display:flex;gap:0.6rem;margin-bottom:1rem;}
+.todo-inp{
+  flex:1;padding:0.65rem 0.9rem;background:var(--s2);border:1px solid var(--border2);
+  border-radius:9px;color:var(--text);font-size:0.82rem;font-family:var(--font);outline:none;
+}
+.todo-inp:focus{border-color:var(--accent);}
+.todo-inp::placeholder{color:var(--muted);}
+.todo-add{
+  padding:0.65rem 1.1rem;background:var(--accent);border:none;border-radius:9px;
+  color:#fff;font-size:0.82rem;font-weight:700;cursor:pointer;font-family:var(--font);
+  transition:filter 0.15s;white-space:nowrap;
+}
+.todo-add:hover{filter:brightness(1.1);}
+.todo-list{display:flex;flex-direction:column;gap:0.35rem;max-height:260px;overflow-y:auto;padding-right:4px;}
+.todo-list::-webkit-scrollbar{width:3px;}
+.todo-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+.todo-item{
+  display:flex;align-items:center;gap:0.7rem;
+  padding:0.55rem 0.7rem;border-radius:8px;
+  background:var(--s2);border:1px solid var(--border);
+  transition:border-color 0.15s;
+}
+.todo-item:hover{border-color:var(--border2);}
+.todo-item.done-t{opacity:0.45;}
+.todo-chk{
+  width:18px;height:18px;border:1.5px solid var(--border2);border-radius:5px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  cursor:pointer;font-size:0.6rem;color:transparent;transition:all 0.15s;
+}
+.todo-item.done-t .todo-chk{background:var(--green);border-color:var(--green);color:#fff;}
+.todo-item.done-t .todo-txt{text-decoration:line-through;color:var(--muted);}
+.todo-txt{flex:1;font-size:0.82rem;color:var(--muted2);cursor:pointer;word-break:break-word;}
+.todo-del{background:none;border:none;color:var(--muted);font-size:0.8rem;cursor:pointer;opacity:0;padding:2px 4px;transition:opacity 0.15s,color 0.15s;}
+.todo-item:hover .todo-del{opacity:1;}
+.todo-del:hover{color:var(--red);}
+.todo-footer{display:flex;justify-content:space-between;align-items:center;margin-top:0.8rem;font-size:0.72rem;color:var(--muted);}
+.todo-clear{background:none;border:none;color:var(--muted);font-size:0.72rem;cursor:pointer;font-family:var(--font);}
+.todo-clear:hover{color:var(--red);}
+.todo-empty{text-align:center;padding:1.5rem;color:var(--muted);font-size:0.8rem;}
+
 /* responsive */
 @media(max-width:1050px){.layout{grid-template-columns:1fr;}.kpi-row{grid-template-columns:repeat(2,1fr);}}
 @media(max-width:580px){
@@ -379,6 +422,21 @@ body::before{
       <div class="log-scroll" id="logList">
         <div class="log-empty"><div class="em">🎯</div>No sessions yet — start studying!</div>
       </div>
+    </div>
+  </div>
+
+
+  <!-- TODO -->
+  <div class="todo-card">
+    <div class="card-title">✅ To-Do List</div>
+    <div class="todo-input-row">
+      <input class="todo-inp" id="todoInp" placeholder="Add a task…" onkeydown="if(event.key==='Enter')addTodo()">
+      <button class="todo-add" onclick="addTodo()">＋ Add</button>
+    </div>
+    <div class="todo-list" id="todoList"></div>
+    <div class="todo-footer">
+      <span id="todoCount">0 tasks</span>
+      <button class="todo-clear" onclick="clearDoneTodos()">Clear completed</button>
     </div>
   </div>
 
@@ -973,8 +1031,60 @@ function clearAll(){
   render(); toast('🗑 Data cleared','Sessions and progress reset.');
 }
 
+
+// ==================== TODO ====================
+let todos = loadTodos();
+function loadTodos(){ try{return JSON.parse(localStorage.getItem('gk4_todos'))||[];}catch(e){return[];} }
+function saveTodos(){ localStorage.setItem('gk4_todos',JSON.stringify(todos)); }
+
+function addTodo(){
+  const inp=document.getElementById('todoInp');
+  const val=inp.value.trim();
+  if(!val) return;
+  todos.unshift({id:genId(),text:val,done:false,ts:Date.now()});
+  saveTodos(); renderTodos();
+  inp.value=''; inp.focus();
+}
+
+function toggleTodo(id){
+  const t=todos.find(t=>t.id===id);
+  if(t) t.done=!t.done;
+  saveTodos(); renderTodos();
+}
+
+function deleteTodo(id){
+  todos=todos.filter(t=>t.id!==id);
+  saveTodos(); renderTodos();
+}
+
+function clearDoneTodos(){
+  todos=todos.filter(t=>!t.done);
+  saveTodos(); renderTodos();
+}
+
+function renderTodos(){
+  const el=document.getElementById('todoList');
+  const cnt=document.getElementById('todoCount');
+  if(!todos.length){
+    el.innerHTML='<div class="todo-empty">No tasks yet — add something above!</div>';
+    cnt.textContent='0 tasks';
+    return;
+  }
+  // show undone first, then done
+  const sorted=[...todos.filter(t=>!t.done),...todos.filter(t=>t.done)];
+  el.innerHTML=sorted.map(t=>`
+    <div class="todo-item${t.done?' done-t':''}">
+      <div class="todo-chk" onclick="toggleTodo('${t.id}')">${t.done?'✓':''}</div>
+      <div class="todo-txt" onclick="toggleTodo('${t.id}')">${t.text}</div>
+      <button class="todo-del" onclick="deleteTodo('${t.id}')">✕</button>
+    </div>`).join('');
+  const remaining=todos.filter(t=>!t.done).length;
+  cnt.textContent=`${remaining} remaining · ${todos.length} total`;
+}
+
 // ==================== BOOT ====================
 render();
+renderTodos();
 updateTimerUI();
 updatePhaseDots();
 </script>
