@@ -413,7 +413,10 @@ body::before{
   <!-- POMODORO + LOG -->
   <div class="layout">
     <div class="card">
-      <div class="card-title">⏱ Pomodoro Timer <span style="font-size:0.7rem;color:var(--muted);font-weight:400;margin-left:4px;">50-10-50-10-50-20</span></div>
+      <div class="card-title" style="justify-content:space-between;">
+        <span>⏱ Pomodoro Timer <span id="pomoCycleLabel" style="font-size:0.7rem;color:var(--muted);font-weight:400;margin-left:4px;"></span></span>
+        <button class="icon-btn" onclick="openPomoSettings()" style="margin-left:auto;font-size:0.72rem;padding:0.35rem 0.75rem;">⚙️ Settings</button>
+      </div>
       <div class="ring-wrap">
         <div class="ring-pos">
           <svg class="ring-svg" width="176" height="176" viewBox="0 0 176 176">
@@ -425,14 +428,7 @@ body::before{
             <div class="t-phase" id="tPhase">Ready</div>
           </div>
         </div>
-        <div class="phase-dots">
-          <div class="pd w" id="pd0"></div>
-          <div class="pd b" id="pd1"></div>
-          <div class="pd w" id="pd2"></div>
-          <div class="pd b" id="pd3"></div>
-          <div class="pd w" id="pd4"></div>
-          <div class="pd b" id="pd5"></div>
-        </div>
+        <div class="phase-dots" id="phaseDots"></div>
       </div>
       <div class="sel-grid">
         <select class="sel" id="seExam" onchange="onExamChange()"><option value="">— Exam —</option></select>
@@ -511,12 +507,26 @@ let state = loadState();
 let sessions = loadSessions();
 let completions = loadCompletions();
 
+// ==================== POMO CONFIG ====================
+function loadPomoCfg(){
+  try{ return JSON.parse(localStorage.getItem('gk4_pomo'))||null; }catch(e){ return null; }
+}
+function savePomoCfg(cfg){ localStorage.setItem('gk4_pomo',JSON.stringify(cfg)); }
+function buildPhases(cfg){
+  const w=cfg.work, b=cfg.brk, lb=cfg.longBrk, n=cfg.sessions;
+  const arr=[];
+  for(let i=0;i<n;i++){
+    arr.push([w*60,`Work #${i+1}`,'w']);
+    if(i<n-1) arr.push([b*60,'Break','b']);
+    else arr.push([lb*60,'Long Break','b']);
+  }
+  return arr;
+}
+function defaultCfg(){ return {work:50,brk:10,longBrk:20,sessions:3}; }
+let pomoCfg = loadPomoCfg() || defaultCfg();
+
 // pomodoro
-const PHASES=[
-  [50*60,'Work #1','w'],[10*60,'Break','b'],
-  [50*60,'Work #2','w'],[10*60,'Break','b'],
-  [50*60,'Work #3','w'],[20*60,'Long Break','b']
-];
+let PHASES = buildPhases(pomoCfg);
 const CIRC = 2*Math.PI*85;
 let tId=null,tRunning=false,phIdx=0,tVal=PHASES[0][0],tTotal=PHASES[0][0];
 let selExamId='',selSubId='',selChapName='';
@@ -1006,7 +1016,7 @@ function startTimer(){
       if(phIdx>=PHASES.length){
         phIdx=0; tVal=PHASES[0][0]; tTotal=PHASES[0][0];
         updateTimerUI(); updatePhaseDots();
-        toast('🎉 Cycle Complete!','Full 50-10-50-10-50-20 done! Well done!');
+        toast('🎉 Cycle Complete!',`Full ${getCycleLabel()} done! Well done!`);
       } else {
         tVal=PHASES[phIdx][0]; tTotal=PHASES[phIdx][0];
         updateTimerUI(); updatePhaseDots();
@@ -1046,12 +1056,13 @@ function updateTimerUI(){
 }
 
 function updatePhaseDots(){
-  for(let i=0;i<6;i++){
-    const d=document.getElementById('pd'+i);
-    d.classList.remove('on','done');
-    if(i<phIdx) d.classList.add('done');
-    else if(i===phIdx) d.classList.add('on');
-  }
+  const wrap=document.getElementById('phaseDots');
+  wrap.innerHTML=PHASES.map((ph,i)=>{
+    let cls='pd '+(ph[2]==='w'?'w':'b');
+    if(i<phIdx) cls+=' done';
+    else if(i===phIdx) cls+=' on';
+    return `<div class="${cls}" id="pd${i}"></div>`;
+  }).join('');
 }
 
 function logSession(){
@@ -1279,11 +1290,79 @@ function renderTodos(){
   cnt.textContent=`${remaining} remaining · ${todos.length} total`;
 }
 
+// ==================== POMO SETTINGS ====================
+function getCycleLabel(){
+  const c=pomoCfg;
+  let parts=[];
+  for(let i=0;i<c.sessions;i++){
+    parts.push(c.work);
+    if(i<c.sessions-1) parts.push(c.brk);
+    else parts.push(c.longBrk);
+  }
+  return parts.join('-');
+}
+
+function updateCycleLabel(){
+  const el=document.getElementById('pomoCycleLabel');
+  if(el) el.textContent=getCycleLabel();
+}
+
+function openPomoSettings(){
+  if(tRunning){ toast('⚠️ Timer Running','Pause the timer before changing settings.'); return; }
+  const c=pomoCfg;
+  const overlay=document.getElementById('overlay');
+  const title=document.getElementById('modalTitle');
+  const body=document.getElementById('modalBody');
+  const confirm=document.getElementById('modalConfirm');
+  modalMode='pomo-settings';
+  title.textContent='⚙️ Pomodoro Settings';
+  confirm.textContent='Apply';
+  body.innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;margin-bottom:1rem;">
+      <div>
+        <div class="color-label" style="margin-bottom:0.4rem;">Work (min)</div>
+        <input class="modal-input" id="pWork" type="number" min="1" max="120" value="${c.work}" style="margin-bottom:0;">
+      </div>
+      <div>
+        <div class="color-label" style="margin-bottom:0.4rem;">Short Break (min)</div>
+        <input class="modal-input" id="pBrk" type="number" min="1" max="60" value="${c.brk}" style="margin-bottom:0;">
+      </div>
+      <div>
+        <div class="color-label" style="margin-bottom:0.4rem;">Long Break (min)</div>
+        <input class="modal-input" id="pLongBrk" type="number" min="1" max="120" value="${c.longBrk}" style="margin-bottom:0;">
+      </div>
+      <div>
+        <div class="color-label" style="margin-bottom:0.4rem;">Work Sessions</div>
+        <input class="modal-input" id="pSessions" type="number" min="1" max="6" value="${c.sessions}" style="margin-bottom:0;">
+      </div>
+    </div>
+    <div style="padding:0.65rem 0.9rem;background:var(--s2);border:1px solid var(--border2);border-radius:9px;font-size:0.78rem;color:var(--muted2);margin-bottom:0.6rem;">
+      💡 Classic Pomodoro: 25 work · 5 break · 15 long break · 4 sessions<br>
+      🎓 Your current: ${c.work} work · ${c.brk} break · ${c.longBrk} long · ${c.sessions} sessions
+    </div>
+  `;
+  confirm.onclick=()=>{
+    const w=parseInt(document.getElementById('pWork').value)||25;
+    const b=parseInt(document.getElementById('pBrk').value)||5;
+    const lb=parseInt(document.getElementById('pLongBrk').value)||15;
+    const s=Math.min(6,Math.max(1,parseInt(document.getElementById('pSessions').value)||4));
+    pomoCfg={work:w,brk:b,longBrk:lb,sessions:s};
+    savePomoCfg(pomoCfg);
+    PHASES=buildPhases(pomoCfg);
+    phIdx=0; tVal=PHASES[0][0]; tTotal=PHASES[0][0];
+    updateTimerUI(); updatePhaseDots(); updateCycleLabel();
+    closeModal();
+    toast('✅ Pomo Updated',`${getCycleLabel()} cycle set!`);
+  };
+  overlay.classList.add('show');
+}
+
 // ==================== BOOT ====================
 render();
 renderTodos();
 updateTimerUI();
 updatePhaseDots();
+updateCycleLabel();
 </script>
 </body>
 </html>
